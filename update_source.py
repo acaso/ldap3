@@ -34,16 +34,14 @@ with open(path.join(package_name, 'version.py'), 'w+') as project_version_file:
         '__url__ = ' + "'" + url + "'",
         '__description__ = ' + "'" + description + "'",
         '__status__ = ' + "'" + status + "'",
-        '__license__ = ' + "'" + license + "'"]))
+        '__license__ = ' + "'" + license + "'",
+        '']))  # empty blank line at the end of the version.py file
 
-# update README.rst from _changelog.txt
-
-with open(path.join('README.rst'), 'r+') as project_readme_file, \
-        open(path.join('_changelog.txt'), 'r') as project_changelog_file:
-    readme = project_readme_file.read()
-    changelog_identifier = '\nChangelog\n---------\n\n'
-    changelog_position = readme.find(changelog_identifier)
-    if changelog_position > 0:
-        updated_readme = readme[0: changelog_position + len(changelog_identifier)] + project_changelog_file.read()
-        project_readme_file.seek(0, 0)
-        project_readme_file.write(updated_readme)
+# creates CHANGES.txt
+    with open(path.join('CHANGES.txt'), 'w+') as changes_file, open(path.join('_changelog.txt'), 'r') as project_changelog_file:
+        changes_file.write('\n'.join([
+            '# changes file for ' + package_name,
+            '# generated on ' + datetime.now().__str__(),
+            '# version ' + version,
+            '']))
+        changes_file.write('\n' + project_changelog_file.read())

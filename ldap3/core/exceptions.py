@@ -356,7 +356,7 @@ class LDAPPackageUnavailableError(LDAPConfigurationError, ImportError):
 
 
 # abstract layer exceptions
-class LDAPKeyError(LDAPExceptionError, KeyError):
+class LDAPKeyError(LDAPExceptionError, KeyError, AttributeError):
     pass
 
 
@@ -380,12 +380,16 @@ class LDAPReaderError(LDAPExceptionError):
     pass
 
 
-# tls exceptions
+# security exceptions
 class LDAPSSLNotSupportedError(LDAPExceptionError, ImportError):
     pass
 
 
-class LDAPInvalidTlsSpecificationError(LDAPException):
+class LDAPInvalidTlsSpecificationError(LDAPExceptionError):
+    pass
+
+
+class LDAPInvalidHashAlgorithmError(LDAPExceptionError, ValueError):
     pass
 
 

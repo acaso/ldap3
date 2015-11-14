@@ -13,7 +13,7 @@ LDAP3
     :target: https://pypi.python.org/pypi/ldap3/
     :alt: License
 
-ldap3 is a strictly RFC 4511 conforming LDAP V3 pure Python **client**. The same codebase works with Python, Python 3, PyPy and PyPy3.
+ldap3 is a strictly RFC 4510 conforming LDAP V3 pure Python **client**. The same codebase works with Python, Python 3, PyPy and PyPy3.
 
 This project was formerly named **python3-ldap**. The name has been changed to avoid confusion with the python-ldap library.
 
@@ -85,74 +85,8 @@ Contact me
 
 For information and suggestions you can contact me at cannatag@gmail.com or you can also a support ticket on https://github.com/cannatag/ldap3/issues/new
 
+
 Changelog
 ---------
 
-* 0.9.8.4 2015.05.19
-    - Added EXTENDED log detail level with prettyPrint description of ldap messages
-    - fixed logging of IPv6 address description
-    - fixed checking of open address when dns returns more than one ip for the same host
-    - fixed selection of proper address when failing back from IPv6 to IPv4 and vice-versa
-    - when sending controls controlValue is now optional (as stated in RFC 4511), specify None to not send it
-
-* 0.9.8.3 2015.05.11
-    - Added support for logging
-    - Added LDAPInvalidTlsSpecificationError exception
-    - Added support for kerberos sasl - needs the gssapi package (thanks sigmaris and pefoley2)
-    - Added support for using generator objects in ldap operations (thanks Matt)
-    - Fixed bug in collect_usage (thanks Philippe)
-    - Changed default server mode from IP_SYSTEM_DEFAULT to IP_V6_PREFERRED
-
-* 0.9.8.2 2015.04.08
-    - SaslCred returned as raw bytes (thanks Peter)
-    - search_paged now properly works in abstract.reader (thanks wazboy)
-
-* 0.9.8.1 2015.04.04
-    - Added NTLMv2 authentication method
-    - extend.standard.who_am_i() now try to decode the authzid as unicode
-    - tests for AD (Active Directory) now use tls_before_bind when opening a connection
-    - 0.9.8 not working for pypi problems
-
-* 0.9.7.12 2015.03.18
-    - Fixed missing optional authzid in digestMD5 sasl mechanism (thanks Damiano)
-    - Changed unneeded classmethods to staticmethods
-
-* 0.9.7.11 2015.03.12
-    - Fixed address_info resolution on systems without the IPV4MAPPED flag (thanks Andryi)
-
-* 0.9.7.10 2015.02.28
-    - Fixed bug in PagedSearch when server has a hard limit on the number of entries returned (thanks Reimar)
-    - 0.9.7.9 not working for pypi problems
-    - 0.9.7.8 not working for pypi problems
-    - 0.9.7.7 not working for pypi problems
-    - 0.9.7.6 not working for pypi problems
-
-* 0.9.7.5 2015.02.20
-    - Fixed exception raised when opening a connection to a server. If there is only one candidate address and there is an error it returns the specific Exception, not a generic LDAPException error
-    - Address_info filters out any impossible address to reach
-    - Address_info include an IPV4MAPPED address for IPV6 host that try to reach an IPV4 only server
-    - Added SyncMock strategy (needs the sldap3 package)
-    - Fixed bug when using the aproximation operation in ldap search operations (thanks Laurent)
-    - Removed response from exception raised with raise_exceptions=True to avoid very long exceptions message
-
-* 0.9.7.4 2015.02.02
-    - Added connection.entries property for storing response from search operations as and abstract.Entry collection.
-
-* 0.9.7.3 2015.01.25
-    - Modify operation type can also be passed as integer
-
-* 0.9.7.2 2015.01.16
-    - Fixed a bug when resolving IP address with getaddrinfo(). On OSX returned an UDP connection (thanks Hiroshi).
-
-* 0.9.7.1 2015.01.05
-    - Moved to Github
-    - Moved to Travis-CI for continuous integration
-    - Moved to ReadTheDocs for documentation
-    - Moved testing servers in the cloud, to allow testing from Travis-CI
-    - Project renamed from python3-ldap to ldap3 to avoid name clashing with the existing python-ldap library
-    - Constant values in ldap3 are now strings. This is helpful in testing and debugging
-    - Test suite fully refactored to be used in cloud lab and local development lab
-    - Test suite includes options for testing against eDirectory, Active Directory and OpenLDAP
-
-
-Previous versions changelog is available at http://pythonhosted.org//python3-ldap/changelog.html
+You can read the current changelog at http://ldap3.readthedocs.org/changelog.html

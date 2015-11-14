@@ -1,8 +1,8 @@
-#########
-SSL & TLS
-#########
+###########
+SSL and TLS
+###########
 
-To use SSL basic authentication change the server definition to::
+You can use SSL basic authentication with the use_ssl parameter of the Server object, you can also specify a port (636 is the default for secure ldap)::
 
     s = Server('servername', port = 636, use_ssl = True)  # define a secure LDAP server
 
@@ -10,6 +10,14 @@ To start a TLS connection on an already created clear connection::
 
     c.start_tls()
 
+
+
+Some older versions (up to 2.7.9) of the Python interpreter lack the capability to check the server certificate against
+the DNS name of the server. This is a potential breach of security because a server could present a certificate issued
+for another host name. ldap3 includes a backport of this capability ported from the 3.4.3 version of the Python interpreter.
+If you want to keep your application up to date with the hostname checking capability of the latest Python version
+you can install the backports.ssl_match_hostname package from pypi. The ldap3 library will detect and use it instead of
+the included static backport.
 
 The Tls object
 ==============
@@ -26,8 +34,9 @@ Tls object uses the ssl module of the Python standard library with additional ch
 
 The needed constants are defined in the ssl package.
 
-IF you don't use a specific Tls object and set use_tls=True in the Server definition, a default Tls object will be used, it has no certificate files, uses the ssl.PROTOCOL_SSLv23 (if available in your Python interpreter) and performs no validation of the server certificate. It's recommended to set validate=ssl.CERT_REQUIRED to verify the certificate server.
-Example::
+IF you don't use a specific Tls object and set use_tls=True in the Server definition, a default Tls object will be used, it has no certificate
+files, uses the ssl.PROTOCOL_SSLv23 (if available in your Python interpreter) and performs no validation of the server certificate.
+It's recommended to set validate=ssl.CERT_REQUIRED to verify the certificate server. Example::
 
     tls = Tls(local_private_key_file='client_private_key.pem', local_certificate_file='client_cert.pem', validate=ssl.CERT_REQUIRED, version=ssl.PROTOCOL_TLSv1, ca_certs_file='ca_certs.b64')
 
@@ -36,16 +45,15 @@ SSLContext
 ----------
 You can use SSLContext if running in Python 3.4 or newer.
 
-The use of ssl.SSLContext make tls operation more flexible, It integrates with the system wide Certification Authorities and also ensure that there are "reasonable" security default when using the tls
-layer. It's now also possible to specify a file system path containing
-the CA file or even pass certificate data "on the fly". When defining
-the Tls object you have the following parameters available:
+The use of ssl.SSLContext make TLS operation more flexible, It integrates with the system wide Certification Authorities and also ensure that there are "reasonable" security defaults when using the TLS
+layer. It's also possible to specify a file system path containing
+the CA file or even pass certificate data "on the fly".
 
-ca_cert_file: the usual link to the certification authority chain of
-certificates
-ca_cert_path: a link to a path containing the certification
-authorities certificates (reashed, as expected by OpenSSL)
-ca_cert_data: CA certificate data stored in memory
+When defining the Tls object you have the following additional parameters available:
+
+* ca_cert_file: the usual link to the certification authority chain of certificates
+* ca_cert_path: a link to a path containing the certification  authorities certificates (reashed, as expected by OpenSSL)
+* ca_cert_data: CA certificate data stored in memory
 
 if you leave all these parameter to None the SSLContext will use the
 system wide certificate store (ssl path on linux, CA stores on
@@ -59,7 +67,7 @@ SASL
 ----
 
 Three SASL mechanisms are currently implemented in the ldap3 library: EXTERNAL, DIGEST-MD5 and GSSAPI (Kerberos, via the gssapi package). Even if DIGEST-MD5 is **deprecated** and moved to historic (RFC6331, July 2011)
-because it is **"insecure and unsuitable for use in protocols"** (as stated by the RFC) I've developed the authentication phase of the protocol because it is still used in LDAP servers.
+because it is **insecure and unsuitable for use in protocols** (as stated by the RFC) I've developed the authentication phase of the protocol because it is still used in LDAP servers.
 
 External
 ^^^^^^^^

@@ -3,7 +3,7 @@ LDIF (LDAP Data Interchange Format)
 ###################################
 
 LDIF is a data interchange format for LDAP. It is defined in RFC2849 (June 2000) in two different flavours: *LDIF-CONTENT* and *LDIF-CHANGE*.
-LDIF-CONTENT is used to describe LDAP entries in an ASCII stream (i.e. a file), while LDIF-CHANGEe is used to describe Add, Delete, Modify and
+LDIF-CONTENT is used to describe LDAP entries in an ASCII stream (i.e. a file), while LDIF-CHANGE is used to describe Add, Delete, Modify and
 ModifyDn operations. *These two formats have different purposes and cannot be mixed in the same stream.*
 If the DN of the entry or an attribute value contains any unicode character the value must be base64 encoded, as specified in RFC2849.
 ldap3 is compliant to the latest LDIF format (version: 1).
@@ -66,8 +66,8 @@ For example::
 
     from ldap3 import Connection, LDIF
     connection = Connection(server = None, client_strategy = LDIF)  # no need of real LDAP server
-    connection.add('cn=test-add-operation,o=test'), 'iNetOrgPerson',
-                   {'objectClass': 'iNetOrgPerson', 'sn': 'test-add', 'cn': 'test-add-operation'})
+    connection.add('cn=test-add-operation,o=test'), 'inetOrgPerson',
+                   {'objectClass': 'inetOrgPerson', 'sn': 'test-add', 'cn': 'test-add-operation'})
 
 
 in connection.response you will find::

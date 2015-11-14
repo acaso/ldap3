@@ -16,6 +16,13 @@ In the ldap3 library the signature for the Delete operation is::
 
 * controls: additional controls to send with the request
 
+For synchronous strategies the delete method returns True if the operation was successful, returns False in case of errors.
+In this case you can inspect the result attribute of the connection object to get the error description.
+
+For asynchronous strategies the delete method returns the message id of the operation. You can get the operation result with
+the get_response(message_id) method of the connection object.
+
+
 Only leaf entries (those with no subordinate entries) can be deleted with this operation.
 
 You perform a Delete operation as in the following example (using the default synchronous strategy)::
@@ -49,7 +56,7 @@ server from a Windows client with dual stack IP::
     DEBUG:ldap3:BASIC:instantiated Server: <Server(host='openldap', port=389, use_ssl=False, get_info='NO_INFO')>
     DEBUG:ldap3:BASIC:instantiated Usage object
     DEBUG:ldap3:BASIC:instantiated <SyncStrategy>: <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - closed - <no socket> - tls not started - not listening - No strategy - async - real DSA - not pooled - cannot stream output>
-    DEBUG:ldap3:BASIC:instantiated Connection: <Connection(server=Server(host='openldap', port=389, use_ssl=False, get_info='NO_INFO'), user='cn=admin,o=test', password='password', auto_bind='NONE', version=3, authentication='SIMPLE', client_strategy='SYNC', auto_referrals=True, check_names=True, collect_usage=True, read_only=False, lazy=False, raise_exceptions=False)>
+    DEBUG:ldap3:BASIC:instantiated Connection: <Connection(server=Server(host='openldap', port=389, use_ssl=False, get_info='NO_INFO'), user='cn=admin,o=test', password='<stripped 8 characters of sensitive data>', auto_bind='NONE', version=3, authentication='SIMPLE', client_strategy='SYNC', auto_referrals=True, check_names=True, collect_usage=True, read_only=False, lazy=False, raise_exceptions=False)>
     DEBUG:ldap3:NETWORK:opening connection for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - closed - <no socket> - tls not started - not listening - SyncStrategy>
     DEBUG:ldap3:BASIC:reset usage metrics
     DEBUG:ldap3:BASIC:start collecting usage metrics
@@ -72,7 +79,7 @@ server from a Windows client with dual stack IP::
 
     DEBUG:ldap3:BASIC:start BIND operation via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:PROTOCOL:performing simple BIND for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
-    DEBUG:ldap3:PROTOCOL:simple BIND request <{'name': 'cn=admin,o=test', 'version': 3, 'authentication': {'sasl': None, 'simple': 'password'}}> sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
+    DEBUG:ldap3:PROTOCOL:simple BIND request <{'name': 'cn=admin,o=test', 'version': 3, 'authentication': {'sasl': None, 'simple': '<stripped 8 characters of sensitive data>'}}> sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:PROTOCOL:new message id <1> generated
     DEBUG:ldap3:NETWORK:sending 1 ldap message for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:EXTENDED:ldap message sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>:
@@ -83,7 +90,7 @@ server from a Windows client with dual stack IP::
     >>   version=3
     >>   name=b'cn=admin,o=test'
     >>   authentication=AuthenticationChoice:
-    >>    simple=b'password'
+    >>    simple=b'<stripped 8 characters of sensitive data>'
     DEBUG:ldap3:NETWORK:sent 37 bytes via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:NETWORK:received 14 bytes via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:NETWORK:received 1 ldap messages via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50024 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>

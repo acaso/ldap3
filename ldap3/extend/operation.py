@@ -23,10 +23,9 @@
 # along with ldap3 in the COPYING and COPYING.LESSER files.
 # If not, see <http://www.gnu.org/licenses/>.
 
-from pyasn1.codec.ber import decoder
-
 from .. import RESULT_SUCCESS
 from ..core.exceptions import LDAPExtensionError
+from ..utils.asn1 import decoder
 
 
 class ExtendedOperation(object):
@@ -45,7 +44,7 @@ class ExtendedOperation(object):
     def send(self):
         if self.connection.check_names and self.connection.server.info is not None and self.connection.server.info.supported_extensions is not None:  # checks if extension is supported
             for request_name in self.connection.server.info.supported_extensions:
-                if request_name.oid == self.request_name:
+                if request_name[0] == self.request_name:
                     break
             else:
                 raise LDAPExtensionError('extension not in DSA list of supported extensions')

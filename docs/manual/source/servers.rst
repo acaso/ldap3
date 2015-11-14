@@ -4,13 +4,13 @@ Servers
 
 Server object
 -------------
-The Server object specify the DSA (Directory Server Agent) LDAP server that will be used by the connection. To create a new Server object the following parameters are available:
+The Server object specifies the DSA (Directory Server Agent) LDAP server that will be used by the connection. To create a new Server object the following parameters are available:
 
-* host: name or ip or the complete url in the scheme://hostname:hostport format of the server (required) - port and scheme defined here have precedence over the parameters port and use_tls
+* host: name or ip or the complete url in the scheme://hostname:hostport format of the server (required) - port and scheme (ldap or ldaps) defined here have precedence over the parameters port and use_tls
 
-* port: the port where the DSA server is listening (defaults to 389, for a cleartext connection)
+* port: the port where the DSA server is listening (defaults to 389, for a cleartext connection, 636 for a secured connection)
 
-* use_ssl: specifies if the connection is on a secure port (defaults to False). When True the secure port is usually set to 636
+* use_ssl: specifies if the connection is on a secure port (defaults to False). When True the secure port is usually set to 636.
 
 * allowed_referral_hosts: specifies which servers are considered reliable as referrals (defaults to None)
 
@@ -20,7 +20,7 @@ The Server object specify the DSA (Directory Server Agent) LDAP server that will
 
     * allow_auth is a boolean to indicate if authentication to that server is allowed; if False only anonymous bind will be used.
 
-* get_info: specifies if the server schema and info must be read (defaults to GET_NO_INFO). Possible values are:
+* get_info: specifies if the server schema and server specific info must be read (defaults to NO_INFO). Possible values are:
 
     * NONE: no information is gathered from the server
 
@@ -38,7 +38,7 @@ The Server object specify the DSA (Directory Server Agent) LDAP server that will
 
     * OFFLINE_DS389_1_3_3: pre-built schema and info for DS389 1.3.3
 
-* mode: specifies dual IP stack behaviour for resolving LDAP server names in dns: Possible values are:
+* mode: specifies dual IP stack behaviour for resolving LDAP server names in DNS: Possible values are:
 
     * IP_SYSTEM_DEFAULT: disable dual stack feature. Use system default
 
@@ -60,28 +60,36 @@ Example::
 
     server = Server('server1', port = 636, use_ssl = True, allowed_referral_hosts = [('server2', True), ('server3', False)])
 
+A server can be implicitly defined with default directly in the Connection definition::
+
+    connection = Connection('server1', user='cn=user1,o=test', password='password')
+
 Server Pool
 -----------
 
 .. sidebar:: Active strategies
 
-   *ACTIVE* strategies can check if the server is listening on the specified port. When the 'active' attribute is set to True the strategy tries to open and close a socket on the port. If your LDAP server has problems with the opening and closing of sockets you can set 'active' to False..
+   Active strategies check if the server is listening on the specified port. When the 'active' attribute is set to True the strategy tries to open and close a socket on the port. If your LDAP server has problems with the opening and closing of sockets you can set 'active' to False..
 
-Different Server objects can be grouped in a Server pool object. A Server pool object can be specified in the Connection object to obtain an high availability (HA) connection. This is useful for long standing connections (for example an LDAP authenticator module in an application server) or when you have a multi replica LDAP server infrastructure. If you set the 'active' attribute to True while defining the ServerPool the strategy will check for server availability. With active ServerPool you can set an additional attribute 'exhaust' to raise an exception if no server is active in the pool. If 'exhaust' is set to False the pool may cycle forever and you must have an alternate way to check exhaustion of the pool.
+Different Server objects can be grouped in a ServerPool object. A ServerPool object can be specified in the Connection object
+to obtain an high availability (HA) connection. This is useful for long standing connections (for example an LDAP authenticator
+module in an application server) or when you have a multi replica LDAP server infrastructure. The ``active`` and ``exhaust``
+parameter accept either a boolean or a number: if you set ``active=True`` while defining the ServerPool the strategy will check
+for server availability, you can also set this attribute to the maximum number of cycles to try before giving up with an
+LDAPServerPoolExhaustedError exception. With ``exhaust=True`` if a server is not active it will be removed by the pool, if you set it
+to a number this will be the number of seconds an unreachable server is considered offline. WHen this timout expires the server
+is reinserted in the pool and checked again for availability.
+
+When all servers in a pool are not available the strategy will wait for the number of seconds specified in ``ldap.POOLING_LOOP_TIMEOUT``
+before starting a new cycle. This defaults to 10 seconds.
 
 The pool can have different HA strategies:
 
-* POOLING_STRATEGY_FIRST: gets the first server in the pool, if 'active' is set to True gets the first available server
+* FIRST: gets the first server in the pool, if 'active' is set to True gets the first available server
 
-* FIRST: alias for POOLING_STRATEGY_FIRST
+* ROUND_ROBIN: each time the connection is open the subsequent server in the pool is used. If active is set to True unavailable servers will be discarded
 
-* POOLING_STRATEGY_ROUND_ROBIN: each time the connection is open the subsequent server in the pool is used. If active is set to True unavailable servers will be discarded
-
-* ROUND_ROBIN: alias for POOLING_STRATEGY_ROUND_ROBIN
-
-* POOLING_STRATEGY_RANDOM: each time the connection is open a random server is chosen in the pool. If active is set to True unavailable servers will be discarded
-
-* RANDOM: alias for POOLING_STRATEGY_RANDOM
+* RANDOM: each time the connection is open a random server is chosen in the pool. If active is set to True unavailable servers will be discarded
 
 A server pool can be defined in different ways::
 
@@ -120,7 +128,7 @@ If the attribute is defined in the schema as 'multi_value' the attribute value i
 Offline Schema
 --------------
 
-If your LDAP server doesn't return the DSA info or the Schema you can load pre-built schemas and infos with the get_info parameter. Are available schemas for eDirectory, Active Directory and Openldap.
+If your LDAP server doesn't return the DSA info or the Schema you can load pre-built schemas and infos with the get_info parameter. Schemas are available for eDirectory, Active Directory and Openldap.
 
 You can also save the schema and info in a json string::
 

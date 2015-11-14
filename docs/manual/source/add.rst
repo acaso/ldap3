@@ -25,6 +25,12 @@ In the ldap3 library the signature for the Add operation is::
 
 * controls: additional controls to send with the request
 
+For synchronous strategies the add method returns True if the operation was successful, returns False in case of errors.
+In this case you can inspect the result attribute of the connection object to get the error description.
+
+For asynchronous strategies the add method returns the message id of the operation. You can get the operation result with
+the get_response(message_id) method of the connection object.
+
 The object_class parameter is a shortcut for specify a sequence of object classes. You can specify the object classes in the
 attributes parameter too.
 
@@ -40,9 +46,9 @@ You perform an Add operation as in the following example (using the default sync
     c = Connection(s, user='user_dn', password='user_password')
 
     # perform the Add operation
-    c.add('cn=user1,ou=users,o=company', ['iNetOrgPerson', 'posixGroup', 'top'], {'sn': 'user_sn', 'gidNumber': 0})
+    c.add('cn=user1,ou=users,o=company', ['inetOrgPerson', 'posixGroup', 'top'], {'sn': 'user_sn', 'gidNumber': 0})
     # equivalent to
-    c.add('cn=user1,ou=users,o=company', attributes={'objectClass':  ['iNetOrgPerson', 'posixGroup', 'top'], 'sn': 'user_sn', gidNumber: 0})
+    c.add('cn=user1,ou=users,o=company', attributes={'objectClass':  ['inetOrgPerson', 'posixGroup', 'top'], 'sn': 'user_sn', gidNumber: 0})
 
     print(c.result)
 
@@ -67,7 +73,7 @@ server from a Windows client with dual stack IP::
     DEBUG:ldap3:BASIC:instantiated Server: <Server(host='openldap', port=389, use_ssl=False, get_info='NO_INFO')>
     DEBUG:ldap3:BASIC:instantiated Usage object
     DEBUG:ldap3:BASIC:instantiated <SyncStrategy>: <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - closed - <no socket> - tls not started - not listening - No strategy - async - real DSA - not pooled - cannot stream output>
-    DEBUG:ldap3:BASIC:instantiated Connection: <Connection(server=Server(host='openldap', port=389, use_ssl=False, get_info='NO_INFO'), user='cn=admin,o=test', password='password', auto_bind='NONE', version=3, authentication='SIMPLE', client_strategy='SYNC', auto_referrals=True, check_names=True, collect_usage=True, read_only=False, lazy=False, raise_exceptions=False)>
+    DEBUG:ldap3:BASIC:instantiated Connection: <Connection(server=Server(host='openldap', port=389, use_ssl=False, get_info='NO_INFO'), user='cn=admin,o=test', password='<stripped 8 characters of sensitive data>', auto_bind='NONE', version=3, authentication='SIMPLE', client_strategy='SYNC', auto_referrals=True, check_names=True, collect_usage=True, read_only=False, lazy=False, raise_exceptions=False)>
     DEBUG:ldap3:NETWORK:opening connection for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - closed - <no socket> - tls not started - not listening - SyncStrategy>
     DEBUG:ldap3:BASIC:reset usage metrics
     DEBUG:ldap3:BASIC:start collecting usage metrics
@@ -90,7 +96,7 @@ server from a Windows client with dual stack IP::
 
     DEBUG:ldap3:BASIC:start BIND operation via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:PROTOCOL:performing simple BIND for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
-    DEBUG:ldap3:PROTOCOL:simple BIND request <{'authentication': {'simple': 'password', 'sasl': None}, 'name': 'cn=admin,o=test', 'version': 3}> sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
+    DEBUG:ldap3:PROTOCOL:simple BIND request <{'authentication': {'simple': '<stripped 8 characters of sensitive data>', 'sasl': None}, 'name': 'cn=admin,o=test', 'version': 3}> sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:PROTOCOL:new message id <1> generated
     DEBUG:ldap3:NETWORK:sending 1 ldap message for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:EXTENDED:ldap message sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>:
@@ -101,7 +107,7 @@ server from a Windows client with dual stack IP::
     >>   version=3
     >>   name=b'cn=admin,o=test'
     >>   authentication=AuthenticationChoice:
-    >>    simple=b'password'
+    >>    simple=b'<stripped 8 characters of sensitive data>'
     DEBUG:ldap3:NETWORK:sent 37 bytes via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:NETWORK:received 14 bytes via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:NETWORK:received 1 ldap messages via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - unbound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
@@ -121,7 +127,7 @@ server from a Windows client with dual stack IP::
     # Performing the Add operation:
 
     DEBUG:ldap3:BASIC:start ADD operation via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
-    DEBUG:ldap3:PROTOCOL:ADD request <{'entry': 'cn=user1,o=test', 'attributes': {'gidNumber': ['0'], 'sn': ['user_sn'], 'objectClass': ['iNetOrgPerson', 'posixGroup', 'top']}}> sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
+    DEBUG:ldap3:PROTOCOL:ADD request <{'entry': 'cn=user1,o=test', 'attributes': {'gidNumber': ['0'], 'sn': ['user_sn'], 'objectClass': ['inetOrgPerson', 'posixGroup', 'top']}}> sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:PROTOCOL:new message id <2> generated
     DEBUG:ldap3:NETWORK:sending 1 ldap message for <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:EXTENDED:ldap message sent via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>:
@@ -142,7 +148,7 @@ server from a Windows client with dual stack IP::
     >>    Attribute:
     >>     type=b'objectClass'
     >>     vals=ValsAtLeast1:
-    >>      b'iNetOrgPerson'      b'posixGroup'      b'top'
+    >>      b'inetOrgPerson'      b'posixGroup'      b'top'
     DEBUG:ldap3:NETWORK:sent 110 bytes via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:NETWORK:received 14 bytes via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>
     DEBUG:ldap3:NETWORK:received 1 ldap messages via <ldap://openldap:389 - cleartext - user: cn=admin,o=test - bound - open - <local: 192.168.137.1:50397 - remote: 192.168.137.104:389> - tls not started - listening - SyncStrategy>

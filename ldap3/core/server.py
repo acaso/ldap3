@@ -134,10 +134,10 @@ class Server(object):
 
         if isinstance(allowed_referral_hosts, SEQUENCE_TYPES):
             self.allowed_referral_hosts = []
-            for refServer in allowed_referral_hosts:
-                if isinstance(refServer, tuple):
-                    if isinstance(refServer[1], bool):
-                        self.allowed_referral_hosts.append(refServer)
+            for referral_host in allowed_referral_hosts:
+                if isinstance(referral_host, tuple):
+                    if isinstance(referral_host[1], bool):
+                        self.allowed_referral_hosts.append(referral_host)
         elif isinstance(allowed_referral_hosts, tuple):
             if isinstance(allowed_referral_hosts[1], bool):
                 self.allowed_referral_hosts = [allowed_referral_hosts]
@@ -232,12 +232,19 @@ class Server(object):
                 break
             cont += 1
 
+    def reset_availability(self):
+        for address in self._address_info:
+            address[5] = None
+            address[6] = None
+
     def check_availability(self):
         """
         Tries to open, connect and close a socket to specified address
-        and port to check availability. Timeout in seconds is specified in CHECK_AVAILABITY_TIMEOUT if not specified in the Server object
+        and port to check availability. Timeout in seconds is specified in CHECK_AVAILABITY_TIMEOUT if not specified in
+        the Server object
         """
         available = False
+        self.reset_availability()
         for address in self.candidate_addresses():
             available = True
             try:
@@ -304,7 +311,8 @@ class Server(object):
                                                    'vendorName',
                                                    'vendorVersion',
                                                    'subschemaSubentry',
-                                                   '*'],  # requests all remaining attributes (other),
+                                                   '*',
+                                                   '+'],  # requests all remaining attributes (other),
                                        get_operational_attributes=True)
 
             with self.lock:
@@ -456,7 +464,7 @@ class Server(object):
         return dummy
 
     def candidate_addresses(self):
-        # selects server address based on server mode and avaibility (in address[5])
+        # selects server address based on server mode and availability (in address[5])
         addresses = self.address_info[:]  # copy to avoid refreshing while searching candidates
         candidates = []
         if addresses:

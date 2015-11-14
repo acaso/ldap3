@@ -46,13 +46,14 @@ AttrDef class
 
 The AttrDef class is used to define an abstract LDAP attribute.
 AttrDef has a single mandatory parameter, the attribute name, and a number of optional parameters. The 'key' optional parameter defines a friendly name to use
-while accessing the attribute. When defining only the attribute name you can add it directly to the ObjectDef (the AttrDef is automatically defined)::
+while accessing the attribute. A 'description' parameter can be used for storing additional information on the Attribute. When defining only the attribute name
+you can add it directly to the ObjectDef (the AttrDef is automatically defined)::
 
-    cn_attribute = AttrDef('cn')
+    cn_attribute = AttrDef('cn, description='This is the internal account name')
     person.add(cn_attribute)
 
-    person += AttrDef('cn')  # same as above
-    person += 'cn'  # same as above
+    person += AttrDef('cn', description='This is the internal account name')  # same as above
+    person += 'cn'  # same as above, without description
 
 You can even add a list of attrDefs or attribute names to an ObjectDef::
 
@@ -171,11 +172,11 @@ configuration and status::
     print(personReader)
     CONN   : ldap://server:389 - cleartext - user: cn=admin,o=test - version 3 - unbound - closed - not listening - SyncWaitStrategy
     BASE   : 'o=test' [SUB]
-    DEFS   : 'iNetOrgPerson' [CommonName <cn>, Department <employeeType>, Surname <sn>]
+    DEFS   : 'inetOrgPerson' [CommonName <cn>, Department <employeeType>, Surname <sn>]
     QUERY  : 'Common Name :test-add*, surname:=t*' [AND]
     PARSED : 'CommonName: =test-add*, Surname: =t*' [AND]
     ATTRS  : ['cn', 'employeeType', 'sn', '+'] [OPERATIONAL]
-    FILTER : '(&(objectClass=iNetOrgPerson)(cn=test-add*)(sn=t*))'
+    FILTER : '(&(objectClass=inetOrgPerson)(cn=test-add*)(sn=t*))'
     ENTRIES: 1 [SUB] [executed at: Sun Feb  9 20:43:47 2014]
 
 
@@ -206,7 +207,7 @@ flag in the Reader object to specify if components are in '&' (AND, True value) 
 
 Object classes defined in the ObjectDef are always included in the filter, so for the previous example the resulting filter is::
 
-    (&(&(objectClass=iNetOrgPerson)(objectClass=AuxEngineer))(cn=b*)(EmployeeType=E))
+    (&(&(objectClass=inetOrgPerson)(objectClass=AuxEngineer))(cn=b*)(EmployeeType=E))
 
 when using a Reader with the 'engineer' ObjectDef.
 
@@ -226,43 +227,17 @@ You can get the whole attribute name list with entry_get_attribute_names(), and 
 Entry is a read only object, you cannot modify or add any property to it. It's an iterable object that returns an attribute object at each iteration. Note that
 you get back the whole attribute object, not only the key as in a standard dictionary::
 
-    person_entry = person_reader.entries[0]
-    for attr in person_entry:
-        print(attr.key)
-
-
-An Entry can be converted to ldif with the entry.entry_to_ldif() method and to json with the entry.entry_to_json() method.
-Entries can be easily printed at the interactive prompt::
-
     >>> c.entries[0]
-    DN: o=services
-        ACL: 2#entry#o=services#loginScript
-             2#entry#o=services#printJobConfiguration
-             32#subtree#cn=edir1,o=services#[All Attributes Rights]
-             16#subtree#cn=edir1,o=services#[Entry Rights]
-             32#subtree#cn=edir2,o=services#[All Attributes Rights]
-             16#subtree#cn=edir2,o=services#[Entry Rights]
-             32#subtree#cn=edir3,o=services#[All Attributes Rights]
-             16#subtree#cn=edir3,o=services#[Entry Rights]
-        GUID: fd9a0d90-15be-2841-fd82-fd9a0d9015be
-        backLink: 32860#cn=edir3,o=services
-        createTimestamp: 2014-06-20 13:19:14+00:00
-        entryDN: o=services
-        entryFlags: 4
-        localEntryID: 32787
-        modifiersName: cn=admin,o=services
-        modifyTimestamp: 2014-11-07 08:17:43+00:00
-        name: services
-        o: services
-        objectClass: Organization
+    DN: cn=person1,o=test
+        cn: person1
+        givenName: person1_givenname
+        objectClass: inetOrgPerson
+                     organizationalPerson
+                     Person
                      ndsLoginProperties
-                     ndsContainerLoginProperties
                      Top
-        revision: 6
-        structuralObjectClass: Organization
-        subordinateCount: 33
-        subschemaSubentry: cn=schema
-
+        sn: person1_surname
+        GUID: fd9a0d90-15be-2841-fd82-fd9a0d9015be
 
 and each attribute of the entry can be accessed as a dictionary or as a namespace::
 
@@ -275,8 +250,65 @@ and each attribute of the entry can be accessed as a dictionary or as a namespac
     >>> c.entries[0].GUID.values
         ['fd9a0d90-15be-2841-fd82-fd9a0d9015be']
 
+An Entry can be converted to LDIF with the entry.entry_to_ldif() method and to JSON with the entry.entry_to_json() method.
+Entries can be easily printed at the interactive prompt::
 
-you can obtain already formatted values when requesting the schema in the Server object.
+    >>> print(c.entries[0].entry_to_ldif())
+    version: 1
+    dn: cn=person1,o=test
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: Person
+    objectClass: ndsLoginProperties
+    objectClass: Top
+    ACL: 2#subtree#cn=person1,o=test#[All Attributes Rights]
+    ACL: 6#entry#cn=person1,o=test#loginScript
+    ACL: 2#entry#[Public]#messageServer
+    ACL: 2#entry#[Root]#groupMembership
+    ACL: 6#entry#cn=person1,o=test#printJobConfiguration
+    ACL: 2#entry#[Root]#networkAddress
+    sn: person1_surname
+    cn: person1
+    givenName: person1_givenname
+    GUID:: +J4sRRpsAEmjlfieLEUabA==
+    # total number of entries: 1
+
+    >>> print(c.entries[0].entry_to_json())
+    {
+        "attributes": {
+            "ACL": [
+                "2#subtree#cn=person1,o=test#[All Attributes Rights]",
+                "6#entry#cn=person1,o=test#loginScript",
+                "2#entry#[Public]#messageServer",
+                "2#entry#[Root]#groupMembership",
+                "6#entry#cn=person1,o=test#printJobConfiguration",
+                "2#entry#[Root]#networkAddress"
+            ],
+            "cn": [
+                "person1"
+            ],
+            "givenName": [
+                "person1_givenname"
+            ],
+            "GUID": [
+                "f89e2c45-1a6c-0049-a395-f89e2c451a6c"
+            ],
+            "objectClass": [
+                "inetOrgPerson",
+                "organizationalPerson",
+                "Person",
+                "ndsLoginProperties",
+                "Top"
+            ],
+            "sn": [
+                "person1_surname"
+            ]
+        },
+        "dn": "cn=person1,o=test"
+    }
+
+
+To obtain already formatted values you must request the schema in the Server object with get_info=SCHEMA or get_info=ALL.
 
 
 Attribute

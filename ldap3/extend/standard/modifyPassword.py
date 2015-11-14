@@ -23,8 +23,11 @@
 # along with ldap3 in the COPYING and COPYING.LESSER files.
 # If not, see <http://www.gnu.org/licenses/>.
 
+from ... import HASHED_NONE
 from ...extend.operation import ExtendedOperation
 from ...protocol.rfc3062 import PasswdModifyRequestValue, PasswdModifyResponseValue
+from ...utils.hashed import hashed
+from ...protocol.sasl.sasl import validate_simple_password
 
 # implements RFC3062
 
@@ -36,14 +39,21 @@ class ModifyPassword(ExtendedOperation):
         self.asn1_spec = PasswdModifyResponseValue()
         self.response_attribute = 'new_password'
 
-    def __init__(self, connection, user=None, old_password=None, new_password=None):
+    def __init__(self, connection, user=None, old_password=None, new_password=None, hash_algorithm=None, salt=None):
         ExtendedOperation.__init__(self, connection)  # calls super __init__()
         if user:
             self.request_value['userIdentity'] = user
         if old_password:
+            if not isinstance(old_password, bytes):  # bytes are returned raw, as per RFC (4.2)
+                old_password = validate_simple_password(old_password, True)
             self.request_value['oldPasswd'] = old_password
         if new_password:
-            self.request_value['newPasswd'] = new_password
+            if not isinstance(new_password, bytes):  # bytes are returned raw, as per RFC (4.2)
+                new_password = validate_simple_password(new_password, True)
+            if hash_algorithm is None or hash_algorithm == HASHED_NONE:
+                self.request_value['newPasswd'] = new_password
+            else:
+                self.request_value['newPasswd'] = hashed(hash_algorithm, new_password, salt)
 
     def populate_result(self):
         try:

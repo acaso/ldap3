@@ -121,28 +121,22 @@ def sasl_prep(data):
     return prepared_data
 
 
-def validate_simple_password(password):
+def validate_simple_password(password, accept_empty=False):
     """
     validate simple password as per RFC4013 using sasl_prep:
     """
 
-    if password == '' or password is None:
+    if accept_empty and not password:
+        return password
+    elif not password:
         raise LDAPPasswordIsMandatoryError("simple password can't be empty")
 
     if not isinstance(password, bytes):  # bytes are returned raw, as per RFC (4.2)
         password = sasl_prep(password)
+        if not isinstance(password, bytes):
+            password = password.encode('utf-8')
 
     return password
-
-
-# def addSaslCredentialsToBindRequest(request, mechanism, credentials):
-#     sasl_credentials = SaslCredentials()
-#     sasl_credentials['mechanism'] = mechanism
-#     if credentials:
-#         sasl_credentials['credentials'] = credentials
-#     request['authentication'] = AuthenticationChoice().setComponentByName('sasl', sasl_credentials)
-#
-#     return request
 
 
 def abort_sasl_negotiation(connection, controls):

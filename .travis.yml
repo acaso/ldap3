@@ -3,7 +3,8 @@ python:
   - "2.6"
   - "2.7"
   - "3.4"
-  - "nightly"
+  - "3.5"
+  # - "nightly"
   - "pypy"
   - "pypy3"
 sudo: false
@@ -19,5 +20,6 @@ env:
   - USERDOMAIN=TRAVIS,REUSABLE,1
 install:
   - "pip install ."
+  - "pip list"
 script:
   - nosetests -s test

@@ -33,7 +33,7 @@ from .. import CASE_INSENSITIVE_SCHEMA_NAMES, SEQUENCE_TYPES, STRING_TYPES
 from ..utils.conv import escape_bytes, json_hook, check_json_dict, format_json, check_escape
 from ..utils.ciDict import CaseInsensitiveDict
 from ..protocol.formatters.standard import format_attribute_values
-from .oid import Oids, decode_oids, decode_syntax
+from .oid import Oids, decode_oids, decode_syntax, oid_to_string
 from ..core.exceptions import LDAPSchemaError, LDAPDefinitionError
 
 
@@ -214,39 +214,50 @@ class DsaInfo(BaseServerInfo):
             r += ('  Supported LDAP Versions: ' + str(self.supported_ldap_versions))
         r += linesep
         if isinstance(self.naming_contexts, SEQUENCE_TYPES):
-            r += ('  Naming Contexts:' + linesep + linesep.join(['    ' + str(s) for s in self.naming_contexts])) if self.naming_contexts else ''
+            r += ('  Naming Contexts: ' + linesep + linesep.join(['    ' + str(s) for s in self.naming_contexts])) if self.naming_contexts else ''
         else:
-            r += ('  Naming Contexts:' + str(self.naming_contexts))
+            r += ('  Naming Contexts: ' + str(self.naming_contexts))
         r += linesep
         if isinstance(self.alt_servers, SEQUENCE_TYPES):
-            r += ('  Alternative Servers:' + linesep + linesep.join(['    ' + str(s) for s in self.alt_servers])) if self.alt_servers else ''
+            r += ('  Alternative Servers: ' + linesep + linesep.join(['    ' + str(s) for s in self.alt_servers])) if self.alt_servers else ''
         else:
-            r += ('  Alternative Servers:' + str(self.alt_servers))
+            r += ('  Alternative Servers: ' + str(self.alt_servers))
         r += linesep
         if isinstance(self.supported_controls, SEQUENCE_TYPES):
-            r += ('  Supported Controls:' + linesep + linesep.join(['    ' + str(s) for s in self.supported_controls])) if self.supported_controls else ''
+            r += ('  Supported Controls: ' + linesep + linesep.join(['    ' + oid_to_string(s) for s in self.supported_controls])) if self.supported_controls else ''
         else:
-            r += ('  Supported Controls:' + str(self.supported_controls))
+            r += ('  Supported Controls: ' + str(self.supported_controls))
         r += linesep
         if isinstance(self.supported_extensions, SEQUENCE_TYPES):
-            r += ('  Supported Extensions:' + linesep + linesep.join(['    ' + str(s) for s in self.supported_extensions])) if self.supported_extensions else ''
+            r += ('  Supported Extensions: ' + linesep + linesep.join(['    ' + oid_to_string(s) for s in self.supported_extensions])) if self.supported_extensions else ''
         else:
-            r += ('  Supported Extensions:' + str(self.supported_extensions))
+            r += ('  Supported Extensions: ' + str(self.supported_extensions))
         r += linesep
-        if isinstance(self.supported_features, SEQUENCE_TYPES):
-            r += ('  Supported Features:' + linesep + linesep.join(['    ' + str(s) for s in self.supported_features])) if self.supported_features else ''
-        else:
-            r += ('  Supported Features:' + str(self.supported_features))
-        r += linesep
+        if self.supported_features:
+            if isinstance(self.supported_features, SEQUENCE_TYPES):
+                r += ('  Supported Features: ' + linesep + linesep.join(['    ' + oid_to_string(s) for s in self.supported_features])) if self.supported_features else ''
+            else:
+                r += ('  Supported Features: ' + str(self.supported_features))
+            r += linesep
         if isinstance(self.supported_sasl_mechanisms, SEQUENCE_TYPES):
-            r += ('  Supported SASL Mechanisms:' + linesep + '    ' + ', '.join([str(s) for s in self.supported_sasl_mechanisms])) if self.supported_sasl_mechanisms else ''
+            r += ('  Supported SASL Mechanisms: ' + linesep + '    ' + ', '.join([str(s) for s in self.supported_sasl_mechanisms])) if self.supported_sasl_mechanisms else ''
         else:
-            r += ('  Supported SASL Mechanisms:' + str(self.supported_sasl_mechanisms))
+            r += ('  Supported SASL Mechanisms: ' + str(self.supported_sasl_mechanisms))
         r += linesep
         if isinstance(self.schema_entry, SEQUENCE_TYPES):
-            r += ('  Schema Entry:' + linesep + linesep.join(['    ' + str(s) for s in self.schema_entry])) if self.schema_entry else ''
+            r += ('  Schema Entry: ' + linesep + linesep.join(['    ' + str(s) for s in self.schema_entry])) if self.schema_entry else ''
         else:
-            r += ('  Schema Entry:' + str(self.schema_entry))
+            r += ('  Schema Entry: ' + str(self.schema_entry))
+        r += linesep
+        if isinstance(self.vendor_name, SEQUENCE_TYPES) and len(self.vendor_name) == 1:
+            r += 'Vendor name: ' + self.vendor_name[0]
+        else:
+            r += 'Vendor name: ' + str(self.vendor_name)
+        r += linesep
+        if isinstance(self.vendor_version, SEQUENCE_TYPES) and len(self.vendor_version) == 1:
+            r += 'Vendor version: ' + self.vendor_version[0]
+        else:
+            r += 'Vendor version: ' + str(self.vendor_version)
         r += linesep
         r += 'Other:' + linesep
         for k, v in self.other.items():
@@ -648,6 +659,8 @@ class AttributeTypeInfo(BaseObjectInfo):
         r += (linesep + '  Substring rule: ' + list_to_string(self.substring)) if self.substring else ''
         r += (linesep + '  Syntax: ' + (self.syntax + (' [' + str(decode_syntax(self.syntax)))) + ']') if self.syntax else ''
         r += (linesep + '  Minimum Length: ' + str(self.min_length)) if isinstance(self.min_length, int) else ''
+    #    r += linesep + '  Mandatory in: '
+    #    r += linesep + '  Optional in: '
         return 'Attribute type' + BaseObjectInfo.__repr__(self).replace('<__desc__>', r)
 
 

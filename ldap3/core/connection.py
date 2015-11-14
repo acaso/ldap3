@@ -26,8 +26,7 @@
 from os import linesep
 from threading import RLock
 import json
-
-from pyasn1.codec.ber import encoder
+from functools import reduce
 
 from .. import ANONYMOUS, SIMPLE, SASL, MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, \
     DEREF_ALWAYS, SUBTREE, ASYNC, SYNC, CLIENT_STRATEGIES, RESULT_SUCCESS, RESULT_COMPARE_TRUE, NO_ATTRIBUTES, ALL_ATTRIBUTES, \
@@ -55,14 +54,14 @@ from ..strategy.ldifProducer import LdifProducerStrategy
 from ..strategy.sync import SyncStrategy
 from ..strategy.restartable import RestartableStrategy
 from ..operation.unbind import unbind_operation
-from ..protocol.rfc2696 import RealSearchControlValue, Cookie, Size
+from ..protocol.rfc2696 import paged_search_control
 from .usage import ConnectionUsage
 from .tls import Tls
 from .exceptions import LDAPUnknownStrategyError, LDAPBindError, LDAPUnknownAuthenticationMethodError, \
     LDAPSASLMechanismNotSupportedError, LDAPObjectClassError, LDAPConnectionIsReadOnlyError, LDAPChangesError, LDAPExceptionError, \
     LDAPObjectError
 from ..utils.conv import escape_bytes, prepare_for_stream, check_json_dict, format_json
-from ..utils.log import log, log_enabled, ERROR, BASIC, PROTOCOL
+from ..utils.log import log, log_enabled, ERROR, BASIC, PROTOCOL, get_library_log_hide_sensitive_data
 
 try:
     from ..strategy.mockSync import MockSyncStrategy  # not used yet
@@ -166,7 +165,8 @@ class Connection(object):
                  raise_exceptions=False,
                  pool_name=None,
                  pool_size=None,
-                 pool_lifetime=None):
+                 pool_lifetime=None,
+                 fast_decoder=True):
 
         self.lock = RLock()  # re-entrant lock to assure that operations in the Connection object are executed atomically in the same thread
         with self.lock:
@@ -227,7 +227,8 @@ class Connection(object):
             self.raise_exceptions = raise_exceptions
             self.auto_range = True if auto_range else False
             self.extend = ExtendedOperationsRoot(self)
-            self._entries = None
+            self._entries = []
+            self.fast_decoder = fast_decoder
 
             if isinstance(server, STRING_TYPES):
                 server = Server(server)
@@ -289,7 +290,10 @@ class Connection(object):
                         raise LDAPBindError(self.last_error)
 
             if log_enabled(BASIC):
-                log(BASIC, 'instantiated Connection: <%r>', self)
+                if get_library_log_hide_sensitive_data():
+                    log(BASIC, 'instantiated Connection: <%s>', self.repr_with_sensitive_data_stripped())
+                else:
+                    log(BASIC, 'instantiated Connection: <%r>', self)
 
     def __str__(self):
         s = [
@@ -300,7 +304,8 @@ class Connection(object):
             _format_socket_endpoints(self.socket),
             'tls not started' if not self.tls_started else('deferred start_tls' if self._deferred_start_tls else 'tls started'),
             'listening' if self.listening else 'not listening',
-            self.strategy.__class__.__name__ if hasattr(self, 'strategy') else 'No strategy'
+            self.strategy.__class__.__name__ if hasattr(self, 'strategy') else 'No strategy',
+            'internal decoder' if self.fast_decoder else 'pyasn1 decoder'
         ]
         return ' - '.join(s)
 
@@ -324,6 +329,38 @@ class Connection(object):
         r += '' if self.lazy is None else ', lazy={0.lazy!r}'.format(self)
         r += '' if self.raise_exceptions is None else ', raise_exceptions={0.raise_exceptions!r}'.format(self)
         r += '' if (self.pool_name is None or self.pool_name == DEFAULT_THREADED_POOL_NAME) else ', pool_name={0.pool_name!r}'.format(self)
+        r += '' if self.pool_size is None else ', pool_size={0.pool_size!r}'.format(self)
+        r += '' if self.pool_lifetime is None else ', pool_lifetime={0.pool_lifetime!r}'.format(self)
+        r += '' if self.fast_decoder is None else (', fast_decoder=' + 'True' if self.fast_decoder else 'False')
+        r += ')'
+
+        return r
+
+    def repr_with_sensitive_data_stripped(self):
+        if self.server_pool:
+            r = 'Connection(server={0.server_pool!r}'.format(self)
+        else:
+            r = 'Connection(server={0.server!r}'.format(self)
+        r += '' if self.user is None else ', user={0.user!r}'.format(self)
+        r += '' if self.password is None else ", password='{0}'".format('<stripped %d characters of sensitive data>' % len(self.password))
+        r += '' if self.auto_bind is None else ', auto_bind={0.auto_bind!r}'.format(self)
+        r += '' if self.version is None else ', version={0.version!r}'.format(self)
+        r += '' if self.authentication is None else ', authentication={0.authentication!r}'.format(self)
+        r += '' if self.strategy_type is None else ', client_strategy={0.strategy_type!r}'.format(self)
+        r += '' if self.auto_referrals is None else ', auto_referrals={0.auto_referrals!r}'.format(self)
+        r += '' if self.sasl_mechanism is None else ', sasl_mechanism={0.sasl_mechanism!r}'.format(self)
+        if self.sasl_mechanism == 'DIGEST-MD5':
+            r += '' if self.sasl_credentials is None else ", sasl_credentials=({0!r}, {1!r}, '{2}', {3!r})".format(self.sasl_credentials[0], self.sasl_credentials[1], '*' * len(self.sasl_credentials[2]), self.sasl_credentials[3])
+        else:
+            r += '' if self.sasl_credentials is None else ', sasl_credentials={0.sasl_credentials!r}'.format(self)
+        r += '' if self.check_names is None else ', check_names={0.check_names!r}'.format(self)
+        r += '' if self.usage is None else (', collect_usage=' + 'True' if self.usage else 'False')
+        r += '' if self.read_only is None else ', read_only={0.read_only!r}'.format(self)
+        r += '' if self.lazy is None else ', lazy={0.lazy!r}'.format(self)
+        r += '' if self.raise_exceptions is None else ', raise_exceptions={0.raise_exceptions!r}'.format(self)
+        r += '' if (
+            self.pool_name is None or self.pool_name == DEFAULT_THREADED_POOL_NAME) else ', pool_name={0.pool_name!r}'.format(
+            self)
         r += '' if self.pool_size is None else ', pool_size={0.pool_size!r}'.format(self)
         r += '' if self.pool_lifetime is None else ', pool_lifetime={0.pool_lifetime!r}'.format(self)
         r += ')'
@@ -477,7 +514,7 @@ class Connection(object):
 
                 if read_server_info and self.bound:
                     self.refresh_server_info()
-            self._entries = None
+            self._entries = []
 
             if log_enabled(BASIC):
                 log(BASIC, 'done BIND operation, result <%s>', self.bound)
@@ -548,7 +585,7 @@ class Connection(object):
             if not attributes:
                 attributes = [NO_ATTRIBUTES]
             elif attributes == ALL_ATTRIBUTES:
-                attributes = ['*']
+                attributes = []
 
             if get_operational_attributes and isinstance(attributes, list):
                 attributes.append(ALL_OPERATIONAL_ATTRIBUTES)
@@ -558,18 +595,19 @@ class Connection(object):
             if isinstance(paged_size, int):
                 if log_enabled(PROTOCOL):
                     log(PROTOCOL, 'performing paged search for %d items with cookie <%s> for <%s>', paged_size, escape_bytes(paged_cookie), self)
-                real_search_control_value = RealSearchControlValue()
-                real_search_control_value['size'] = Size(paged_size)
-                real_search_control_value['cookie'] = Cookie(paged_cookie) if paged_cookie else Cookie('')
+                # real_search_control_value = RealSearchControlValue()
+                # real_search_control_value['size'] = Size(paged_size)
+                # real_search_control_value['cookie'] = Cookie(paged_cookie) if paged_cookie else Cookie('')
                 if controls is None:
                     controls = []
-                controls.append(('1.2.840.113556.1.4.319', paged_criticality if isinstance(paged_criticality, bool) else False, encoder.encode(real_search_control_value)))
+                # controls.append(('1.2.840.113556.1.4.319', paged_criticality if isinstance(paged_criticality, bool) else False, encoder.encode(real_search_control_value)))
+                controls.append(paged_search_control(paged_criticality, paged_size, paged_cookie))
 
             request = search_operation(search_base, search_filter, search_scope, dereference_aliases, attributes, size_limit, time_limit, types_only, self.server.schema if self.server else None)
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'SEARCH request <%s> sent via <%s>', search_request_to_dict(request), self)
             response = self.post_send_search(self.send('searchRequest', request, controls))
-            self._entries = None
+            self._entries = []
 
             if isinstance(response, int):
                 return_value = response
@@ -606,7 +644,7 @@ class Connection(object):
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'COMPARE request <%s> sent via <%s>', compare_request_to_dict(request), self)
             response = self.post_send_single_response(self.send('compareRequest', request, controls))
-            self._entries = None
+            self._entries = []
             if isinstance(response, int):
                 return_value = response
                 if log_enabled(PROTOCOL):
@@ -642,21 +680,21 @@ class Connection(object):
             if object_class is None:
                 parm_object_class = []
             else:
-                parm_object_class = object_class if isinstance(object_class, SEQUENCE_TYPES) else [object_class]
+                parm_object_class = list(object_class) if isinstance(object_class, SEQUENCE_TYPES) else [object_class]
 
             object_class_attr_name = ''
             if attributes:
                 for attr in attributes:
                     if attr.lower() == 'objectclass':
                         object_class_attr_name = attr
-                        attr_object_class = attributes[object_class_attr_name] if isinstance(attributes[object_class_attr_name], SEQUENCE_TYPES) else [attributes[object_class_attr_name]]
+                        attr_object_class = list(attributes[object_class_attr_name]) if isinstance(attributes[object_class_attr_name], SEQUENCE_TYPES) else [attributes[object_class_attr_name]]
             else:
                 attributes = dict()
 
             if not object_class_attr_name:
                 object_class_attr_name = 'objectClass'
 
-            attributes[object_class_attr_name] = list(set([object_class for object_class in parm_object_class + attr_object_class]))  # remove duplicate ObjectClasses
+            attributes[object_class_attr_name] = reduce(lambda x, y: x + [y] if y not in x else x, parm_object_class + attr_object_class, [])  # remove duplicate ObjectClasses
 
             if not attributes[object_class_attr_name]:
                 self.last_error = 'objectClass attribute is mandatory'
@@ -668,7 +706,7 @@ class Connection(object):
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'ADD request <%s> sent via <%s>', add_request_to_dict(request), self)
             response = self.post_send_single_response(self.send('addRequest', request, controls))
-            self._entries = None
+            self._entries = []
 
             if isinstance(response, STRING_TYPES + (int, )):
                 return_value = response
@@ -705,7 +743,7 @@ class Connection(object):
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'DELETE request <%s> sent via <%s>', delete_request_to_dict(request), self)
             response = self.post_send_single_response(self.send('delRequest', request, controls))
-            self._entries = None
+            self._entries = []
 
             if isinstance(response, STRING_TYPES + (int, )):
                 return_value = response
@@ -728,8 +766,9 @@ class Connection(object):
         """
         Modify attributes of entry
 
-        - Changes is a dictionary in the form {'attribute1': (operation, [val1, val2]),
-        'attribute2': (operation, [val1, val2]), ...}
+        - Changes is a dictionary in the form {'attribute1': change),
+        'attribute2': [change, change, ...], ...}
+        change is (operation, [value1, value2, ...])
         - Operation is 0 (MODIFY_ADD), 1 (MODIFY_DELETE), 2 (MODIFY_REPLACE), 3 (MODIFY_INCREMENT)
         """
         if log_enabled(BASIC):
@@ -755,23 +794,29 @@ class Connection(object):
                     log(ERROR, '%s for <%s>', self.last_error, self)
                 raise LDAPChangesError(self.last_error)
 
-            for change in changes:
-                if len(changes[change]) != 2:
-                    self.last_error = 'malformed change'
-                    if log_enabled(ERROR):
-                        log(ERROR, '%s for <%s>', self.last_error, self)
-                    raise LDAPChangesError(self.last_error)
-                elif changes[change][0] not in [MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, MODIFY_INCREMENT, 0, 1, 2, 3]:
-                    self.last_error = 'unknown change type'
-                    if log_enabled(ERROR):
-                        log(ERROR, '%s for <%s>', self.last_error, self)
-                    raise LDAPChangesError(self.last_error)
+            for attribute_name in changes:
+                change = changes[attribute_name]
+                if isinstance(change, SEQUENCE_TYPES) and change[0] in [MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, MODIFY_INCREMENT, 0, 1, 2, 3]:
+                    if len(change) != 2:
+                        self.last_error = 'malformed change'
+                        if log_enabled(ERROR):
+                            log(ERROR, '%s for <%s>', self.last_error, self)
+                        raise LDAPChangesError(self.last_error)
+
+                    changes[attribute_name] = [change]  # insert change in a tuple
+                else:
+                    for change_operation in change:
+                        if len(change_operation) != 2 or change_operation[0] not in [MODIFY_ADD, MODIFY_DELETE, MODIFY_REPLACE, MODIFY_INCREMENT, 0, 1, 2, 3]:
+                            self.last_error = 'invalid change list'
+                            if log_enabled(ERROR):
+                                log(ERROR, '%s for <%s>', self.last_error, self)
+                            raise LDAPChangesError(self.last_error)
 
             request = modify_operation(dn, changes, self.server.schema if self.server else None)
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'MODIFY request <%s> sent via <%s>', modify_request_to_dict(request), self)
             response = self.post_send_single_response(self.send('modifyRequest', request, controls))
-            self._entries = None
+            self._entries = []
 
             if isinstance(response, STRING_TYPES + (int, )):
                 return_value = response
@@ -818,7 +863,7 @@ class Connection(object):
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'MODIFY DN request <%s> sent via <%s>', modify_dn_request_to_dict(request), self)
             response = self.post_send_single_response(self.send('modDNRequest', request, controls))
-            self._entries = None
+            self._entries = []
 
             if isinstance(response, STRING_TYPES + (int, )):
                 return_value = response
@@ -854,8 +899,11 @@ class Connection(object):
                     self.send('abandonRequest', request, controls)
                     self.result = None
                     self.response = None
-                    self._entries = None
+                    self._entries = []
                     return_value = True
+                else:
+                    if log_enabled(ERROR):
+                        log(ERROR, 'cannot abandon a Bind, an Unbind or an Abandon operation or message ID %s not found via <%s>', str(message_id), self)
 
             if log_enabled(BASIC):
                 log(BASIC, 'done ABANDON operation, result <%s>', return_value)
@@ -878,7 +926,7 @@ class Connection(object):
             if log_enabled(PROTOCOL):
                 log(PROTOCOL, 'EXTENDED request <%s> sent via <%s>', extended_request_to_dict(request), self)
             response = self.post_send_single_response(self.send('extendedReq', request, controls))
-            self._entries = None
+            self._entries = []
             if isinstance(response, int):
                 return_value = response
                 if log_enabled(PROTOCOL):
@@ -1137,9 +1185,10 @@ class Connection(object):
             # build a table of ObjectDefs, grouping the entries found in search_response for their attributes set, subset will be included in superset
             attr_sets = []
             for response in search_response:
-                resp_attr_set = set(response['attributes'].keys())
-                if resp_attr_set not in attr_sets:
-                    attr_sets.append(resp_attr_set)
+                if response['type'] == 'searchResEntry':
+                    resp_attr_set = set(response['attributes'].keys())
+                    if resp_attr_set not in attr_sets:
+                        attr_sets.append(resp_attr_set)
             attr_sets.sort(key=lambda x: -len(x))  # sorts the list in descending length order
             unique_attr_sets = []
             for attr_set in attr_sets:
@@ -1151,7 +1200,7 @@ class Connection(object):
             object_defs = []
             for attr_set in unique_attr_sets:
                 object_def = ObjectDef()
-                object_def += list(attr_set)  # convert the set in a list to be added to the object definition
+                object_def += list(attr_set)  # converts the set in a list to be added to the object definition
                 object_defs.append((attr_set, object_def))  # objects_defs contains a tuple with the set and the ObjectDef
 
             entries = []
@@ -1172,7 +1221,7 @@ class Connection(object):
                                 entry.__dict__[attr_name] = attr
                             entry.__dict__['_reader'] = None  # not used
                             entries.append(entry)
-                        break
+                            break
                     else:
                         if log_enabled(ERROR):
                             log(ERROR, 'attribute set not found for %s in <%s>', resp_attr_set, self)
